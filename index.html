@@ -45,8 +45,12 @@
 
     const Icon = ({ name, className }) => <i className={`fa-solid fa-${name} ${className}`}></i>;
 
-    // Helper Sort Tanggal Terkecil -> Terbesar
-    const sortDateAsc = (a, b) => new Date(a.tanggal) - new Date(b.tanggal);
+    // Helper Sort Tanggal Terkecil -> Terbesar yang Aman
+    const sortDateAsc = (a, b) => {
+      if (!a.tanggal) return 1;
+      if (!b.tanggal) return -1;
+      return new Date(a.tanggal) - new Date(b.tanggal);
+    };
 
     // Helper Hitung Durasi Lembur (Tipe Angka / Desimal)
     const calculateDuration = (start, end) => {
@@ -54,7 +58,7 @@
       const [sh, sm] = start.split(':').map(Number);
       const [eh, em] = end.split(':').map(Number);
       let diff = (eh * 60 + em) - (sh * 60 + sm);
-      if (diff < 0) diff += 24 * 60; // Jika lintas hari (contoh 23:00 - 02:00)
+      if (diff < 0) diff += 24 * 60; // Jika lintas hari
       return Number((diff / 60).toFixed(2));
     };
 
@@ -193,9 +197,11 @@
       };
 
       const handleSaveOvertime = async (newData) => {
-        setSavedOvertimes([...newData, ...savedOvertimes]); 
-        const dbPayloads = newData.map(ot => ({
-          id: ot.id, nik: ot.nik, tanggal: ot.tanggal, jam_mulai: ot.jamMulai, jam_berakhir: ot.jamBerakhir, status: 'Pending', timestamp: ot.timestamp
+        // PERBAIKAN: Pastikan status 'Pending' masuk ke memori lokal agar langsung terbaca di Dashboard Atasan
+        const processedData = newData.map(ot => ({ ...ot, status: 'Pending' }));
+        setSavedOvertimes([...processedData, ...savedOvertimes]); 
+        const dbPayloads = processedData.map(ot => ({
+          id: ot.id, nik: ot.nik, tanggal: ot.tanggal, jam_mulai: ot.jamMulai, jam_berakhir: ot.jamBerakhir, status: ot.status, timestamp: ot.timestamp
         }));
         await supabase.from('overtimes').insert(dbPayloads);
       };
@@ -564,7 +570,7 @@
 
       const reportData = overtimes.map(ot => {
         const u = users.find(x => String(x.nik) === String(ot.nik)) || {};
-        return { ...ot, nama: u.nama, lokasiKerja: u.lokasiKerja, project: u.project, jabatan: u.jabatan };
+        return { ...ot, nama: u.nama, lokasiKerja: u.lokasiKerja, project: u.project, jabatan: u.jabatan, status: ot.status || 'Pending' };
       });
 
       let filtered = reportData.filter(i => {
@@ -625,9 +631,18 @@
 
     // --- KOMPONEN APPROVER DASHBOARD ---
     function ApprovalDashboard({ user, users, overtimes, onUpdateStatus }) {
-      const bawahanNiks = users.filter(u => String(u.approverNik) === String(user.nik)).map(u => u.nik);
-      const approvalData = overtimes.filter(ot => bawahanNiks.includes(ot.nik) && ot.status === 'Pending').sort(sortDateAsc);
-      const [rejectId, setRejectId] = useState(null); const [reason, setReason] = useState('');
+      // Pastikan komparasi NIK sangat aman dari huruf besar/kecil dan spasi
+      const bawahanNiks = users
+        .filter(u => u.approverNik && String(u.approverNik).trim().toLowerCase() === String(user.nik).trim().toLowerCase())
+        .map(u => String(u.nik).trim().toLowerCase());
+      
+      // Urutkan Tanggal Terkecil (Ascending) & handle status undefined dari input baru
+      const approvalData = overtimes
+        .filter(ot => ot.nik && bawahanNiks.includes(String(ot.nik).trim().toLowerCase()) && (ot.status || 'Pending').toLowerCase() === 'pending')
+        .sort(sortDateAsc);
+        
+      const [rejectId, setRejectId] = useState(null); 
+      const [reason, setReason] = useState('');
 
       return (
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden animate-fade-in">
@@ -637,7 +652,7 @@
               <thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase text-xs">Tgl</th><th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase text-xs">Karyawan</th><th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase text-xs">Waktu</th><th className="px-6 py-3 text-center font-semibold text-gray-500 uppercase text-xs">Aksi</th></tr></thead>
               <tbody className="divide-y">
                 {approvalData.map(ot => {
-                  const emp = users.find(u => u.nik === ot.nik) || {};
+                  const emp = users.find(u => String(u.nik).trim() === String(ot.nik).trim()) || {};
                   return (
                     <tr key={ot.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 font-medium">{ot.tanggal}</td>
@@ -662,7 +677,14 @@
                     </tr>
                   );
                 })}
-                {approvalData.length===0 && <tr><td colSpan="4" className="text-center py-10 text-gray-500">Tidak ada pengajuan lembur yang menunggu persetujuan Anda.</td></tr>}
+                {approvalData.length===0 && (
+                  <tr>
+                    <td colSpan="4" className="text-center py-10 text-gray-500">
+                      <p>Tidak ada pengajuan lembur yang menunggu persetujuan Anda.</p>
+                      <p className="text-xs mt-2 text-gray-400">Pastikan NIK Anda terdaftar sebagai "Set Atasan" pada menu Master Karyawan bawahan Anda.</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -677,9 +699,15 @@
       const [dTo, setDTo] = useState('');
       const [applied, setApplied] = useState({});
       
-      const bawahanNiks = users.filter(u => String(u.approverNik) === String(user.nik)).map(u => u.nik);
-      const data = overtimes.filter(ot => bawahanNiks.includes(ot.nik)).map(ot => {
-        const u = users.find(x => x.nik === ot.nik) || {}; return { ...ot, nama: u.nama, jabatan: u.jabatan };
+      const bawahanNiks = users
+        .filter(u => u.approverNik && String(u.approverNik).trim().toLowerCase() === String(user.nik).trim().toLowerCase())
+        .map(u => String(u.nik).trim().toLowerCase());
+        
+      const data = overtimes
+        .filter(ot => ot.nik && bawahanNiks.includes(String(ot.nik).trim().toLowerCase()))
+        .map(ot => {
+          const u = users.find(x => String(x.nik).trim().toLowerCase() === String(ot.nik).trim().toLowerCase()) || {}; 
+          return { ...ot, nama: u.nama, jabatan: u.jabatan, status: ot.status || 'Pending' };
       });
 
       const bawahanNames = [...new Set(data.map(item => item.nama))].filter(Boolean).sort();
@@ -794,7 +822,10 @@
     }
 
     function HistoryLembur({ user, historyData }) {
-      const data = historyData.filter(i => String(i.nik) === String(user.nik)).sort(sortDateAsc);
+      const data = historyData
+        .filter(i => String(i.nik).trim().toLowerCase() === String(user.nik).trim().toLowerCase())
+        .map(ot => ({ ...ot, status: ot.status || 'Pending' }))
+        .sort(sortDateAsc);
 
       const getStatusBadge = (status) => {
         switch(status) {
@@ -837,12 +868,12 @@
       const [dFrom, setDFrom] = useState(''); const [dTo, setDTo] = useState('');
       const [previewData, setPreviewData] = useState(null);
 
-      const approver = users.find(u => u.nik === user.approverNik);
+      const approver = users.find(u => String(u.nik).trim().toLowerCase() === String(user.approverNik).trim().toLowerCase());
 
       const handlePreview = () => {
         if(!dFrom || !dTo) return alert("Pilih tanggal dari dan sampai.");
         // Filter: Hanya Status Approved, Dalam Rentang Tanggal, Urut Tanggal Terkecil (Ascending)
-        const data = historyData.filter(ot => String(ot.nik) === String(user.nik) && ot.status === 'Approved' && ot.tanggal >= dFrom && ot.tanggal <= dTo).sort(sortDateAsc);
+        const data = historyData.filter(ot => String(ot.nik).trim().toLowerCase() === String(user.nik).trim().toLowerCase() && ot.status === 'Approved' && ot.tanggal >= dFrom && ot.tanggal <= dTo).sort(sortDateAsc);
         if(data.length === 0) return alert("Tidak ada data lembur yang 'Approved' pada rentang waktu ini.");
         setPreviewData(data);
       };
@@ -850,10 +881,10 @@
       const handleDownloadPDF = () => {
         const element = document.getElementById('spkl-document');
         const opt = {
-          margin:       10, // Margin atas, kiri, bawah, kanan (dalam mm)
+          margin:       [15, 15, 15, 15], // Margin: Atas, Kiri, Bawah, Kanan (dalam milimeter)
           filename:     `SPKL_${user.nama}_${dFrom}_to_${dTo}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, logging: false }, 
+          html2canvas:  { scale: 2, useCORS: true }, 
           jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
@@ -876,20 +907,22 @@
               <div className="flex justify-end mb-3"><button onClick={handleDownloadPDF} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md font-bold text-sm transition"><Icon name="file-pdf" className="mr-2"/> Download PDF</button></div>
               
               {/* AREA CETAK PDF */}
-              <div className="overflow-x-auto bg-gray-200 p-4 rounded-xl flex justify-center">
-                <div id="spkl-document" className="bg-white text-black p-10 pdf-container box-border mx-auto" style={{ width: '800px' }}>
+              <div className="overflow-x-auto bg-gray-200 p-6 rounded-xl flex justify-center border border-gray-300">
+                
+                {/* KANVAS A4 (Lebar di-set presisi di 180mm agar muat sempurna di JS-PDF dgn Margin 15mm) */}
+                <div id="spkl-document" className="bg-white text-black pdf-container box-border mx-auto text-[13px] shadow-md" style={{ width: '180mm', padding: '10mm', minHeight: '260mm' }}>
                   
                   {/* Bagian Header & Logo */}
                   <div className="flex justify-between items-center mb-8 border-b-2 border-black pb-4">
                     <div className="flex-1 pr-4">
-                      <h2 className="font-bold text-2xl uppercase tracking-wide text-left text-gray-900">Persetujuan Surat Perintah Kerja Lembur</h2>
+                      <h2 className="font-bold text-2xl uppercase tracking-wide text-left text-gray-900 leading-tight">Persetujuan Surat Perintah <br/>Kerja Lembur</h2>
                     </div>
                     <div className="flex-shrink-0 text-right pl-4">
-                      {/* Anda bisa mengganti URL di bawah dengan link URL gambar asli Logo SOS Anda jika punya (misal: imgur/drive public) */}
+                      {/* Ganti URL src di bawah ini dengan URL logo asli yang di-hosting di tempat yang support CORS (Misal: imgBB) */}
                       <img 
                         src="https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png" 
                         alt="Logo Perusahaan" 
-                        className="h-16 w-auto object-contain ml-auto" 
+                        className="h-14 w-auto object-contain ml-auto" 
                         onError={(e) => { e.target.src = 'https://dummyimage.com/200x60/ffffff/000000.png&text=LOGO+PERUSAHAAN'; }}
                       />
                     </div>
