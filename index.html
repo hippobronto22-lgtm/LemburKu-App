@@ -965,8 +965,8 @@
                 {/* KANVAS A4 (Lebar di-set presisi di 180mm agar muat sempurna di JS-PDF dgn Margin 15mm) */}
                 <div id="spkl-document" className="bg-white text-black pdf-container box-border mx-auto text-[13px] shadow-md" style={{ width: '180mm', padding: '10mm', minHeight: '260mm' }}>
                   
-                  {/* Bagian Header & Logo */}
-                  <div className="flex justify-between items-center mb-8 border-b-2 border-black pb-4">
+                  {/* Bagian Header & Logo: item-start digunakan agar rata atas */}
+                  <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-4">
                     <div className="flex-1 pr-4">
                       <h2 className="font-bold text-2xl uppercase tracking-wide text-left text-gray-900 leading-tight">Persetujuan Surat Perintah <br/>Kerja Lembur</h2>
                     </div>
@@ -981,24 +981,26 @@
                     </div>
                   </div>
                   
+                  {/* Bagian Tabel Identitas Karyawan: Tambah class align-top pada td */}
                   <table className="mb-8 w-full max-w-lg text-sm">
                     <tbody>
-                      <tr><td className="py-1.5 w-32 font-semibold text-gray-800">Nama</td><td className="text-gray-900">: {user.nama}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-gray-800">NIK</td><td className="text-gray-900">: {user.nik}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-gray-800">Jabatan</td><td className="text-gray-900">: {user.jabatan || '-'}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-gray-800">Lokasi / Project</td><td className="text-gray-900">: {user.lokasiKerja} / {user.project}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-gray-800">Periode Lembur</td><td className="text-gray-900">: {dFrom} <span className="mx-1">s/d</span> {dTo}</td></tr>
+                      <tr><td className="py-1.5 w-32 font-semibold text-gray-800 align-top">Nama</td><td className="text-gray-900 py-1.5 align-top">: {user.nama}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800 align-top">NIK</td><td className="text-gray-900 py-1.5 align-top">: {user.nik}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800 align-top">Jabatan</td><td className="text-gray-900 py-1.5 align-top">: {user.jabatan || '-'}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800 align-top">Lokasi / Project</td><td className="text-gray-900 py-1.5 align-top">: {user.lokasiKerja} / {user.project}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800 align-top">Periode Lembur</td><td className="text-gray-900 py-1.5 align-top">: {dFrom} <span className="mx-1">s/d</span> {dTo}</td></tr>
                     </tbody>
                   </table>
 
+                  {/* Bagian Tabel List Lembur: Tambah class align-top pada td dan th */}
                   <table className="w-full border-collapse border border-gray-800 mb-16 text-sm">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="border border-gray-800 p-2.5 text-left text-gray-900">Tgl Lembur</th>
-                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Waktu Mulai</th>
-                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Waktu Berakhir</th>
-                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Status</th>
-                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Tgl Approved</th>
+                        <th className="border border-gray-800 p-2.5 text-left text-gray-900 align-top">Tgl Lembur</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900 align-top">Waktu Mulai</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900 align-top">Waktu Berakhir</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900 align-top">Status</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900 align-top">Tgl Approved</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1006,18 +1008,19 @@
                         const appDate = ot.approvedAt ? new Date(ot.approvedAt).toLocaleDateString('id-ID') : '-';
                         return (
                           <tr key={ot.id}>
-                            <td className="border border-gray-800 p-2.5 font-medium text-gray-900">{ot.tanggal}</td>
-                            <td className="border border-gray-800 p-2.5 text-center text-gray-800">{ot.jamMulai}</td>
-                            <td className="border border-gray-800 p-2.5 text-center text-gray-800">{ot.jamBerakhir}</td>
-                            <td className="border border-gray-800 p-2.5 text-center leading-tight text-gray-800">Approved by<br/><b>{ot.approvedBy || (approver ? approver.nama : '-')}</b></td>
-                            <td className="border border-gray-800 p-2.5 text-center text-gray-800">{appDate}</td>
+                            <td className="border border-gray-800 p-2.5 font-medium text-gray-900 align-top">{ot.tanggal}</td>
+                            <td className="border border-gray-800 p-2.5 text-center text-gray-800 align-top">{ot.jamMulai}</td>
+                            <td className="border border-gray-800 p-2.5 text-center text-gray-800 align-top">{ot.jamBerakhir}</td>
+                            <td className="border border-gray-800 p-2.5 text-center leading-tight text-gray-800 align-top">Approved by<br/><b>{ot.approvedBy || (approver ? approver.nama : '-')}</b></td>
+                            <td className="border border-gray-800 p-2.5 text-center text-gray-800 align-top">{appDate}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
 
-                  <div className="grid grid-cols-3 gap-4 mt-16 px-2 text-center text-sm">
+                  {/* Bagian Tanda Tangan */}
+                  <div className="grid grid-cols-3 gap-4 mt-16 px-2 text-center text-sm align-top">
                     <div>
                       <p className="mb-24 text-gray-800">Pemohon,</p>
                       <p className="font-bold underline text-gray-900">{user.nama}</p>
