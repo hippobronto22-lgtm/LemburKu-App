@@ -850,10 +850,10 @@
       const handleDownloadPDF = () => {
         const element = document.getElementById('spkl-document');
         const opt = {
-          margin:       [10, 10, 10, 10], // Margin Atas, Kiri, Bawah, Kanan
+          margin:       10, // Margin atas, kiri, bawah, kanan (dalam mm)
           filename:     `SPKL_${user.nama}_${dFrom}_to_${dTo}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, windowWidth: 800 }, // Mengunci ukuran canvas agar layout tidak hancur
+          html2canvas:  { scale: 2, useCORS: true, logging: false }, 
           jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
@@ -877,37 +877,42 @@
               
               {/* AREA CETAK PDF */}
               <div className="overflow-x-auto bg-gray-200 p-4 rounded-xl flex justify-center">
-                <div id="spkl-document" className="bg-white text-black p-10 shadow-md pdf-container box-border" style={{ width: '800px', minHeight: '1122px' }}>
+                <div id="spkl-document" className="bg-white text-black p-10 pdf-container box-border mx-auto" style={{ width: '800px' }}>
                   
                   {/* Bagian Header & Logo */}
                   <div className="flex justify-between items-center mb-8 border-b-2 border-black pb-4">
                     <div className="flex-1 pr-4">
-                      <h2 className="font-bold text-2xl uppercase tracking-wide text-left">Persetujuan Surat Perintah Kerja Lembur</h2>
+                      <h2 className="font-bold text-2xl uppercase tracking-wide text-left text-gray-900">Persetujuan Surat Perintah Kerja Lembur</h2>
                     </div>
-                    <div className="w-56 flex-shrink-0 text-right">
-                      {/* Anda bisa mengganti URL di bawah dengan link URL asli Logo Anda jika punya, atau biarkan teks alt bekerja */}
-                      <img src="https://dummyimage.com/300x100/ffffff/000000.png&text=Logo+SOS+ALSOK" alt="PT Shield On Service Tbk - A member of ALSOK Group" className="max-w-full h-auto ml-auto" />
+                    <div className="flex-shrink-0 text-right pl-4">
+                      {/* Anda bisa mengganti URL di bawah dengan link URL gambar asli Logo SOS Anda jika punya (misal: imgur/drive public) */}
+                      <img 
+                        src="https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png" 
+                        alt="Logo Perusahaan" 
+                        className="h-16 w-auto object-contain ml-auto" 
+                        onError={(e) => { e.target.src = 'https://dummyimage.com/200x60/ffffff/000000.png&text=LOGO+PERUSAHAAN'; }}
+                      />
                     </div>
                   </div>
                   
                   <table className="mb-8 w-full max-w-lg text-sm">
                     <tbody>
-                      <tr><td className="py-1 w-32 font-semibold">Nama</td><td>: {user.nama}</td></tr>
-                      <tr><td className="py-1 font-semibold">NIK</td><td>: {user.nik}</td></tr>
-                      <tr><td className="py-1 font-semibold">Jabatan</td><td>: {user.jabatan || '-'}</td></tr>
-                      <tr><td className="py-1 font-semibold">Lokasi / Project</td><td>: {user.lokasiKerja} / {user.project}</td></tr>
-                      <tr><td className="py-1 font-semibold">Periode Lembur</td><td>: {dFrom} <span className="mx-1">s/d</span> {dTo}</td></tr>
+                      <tr><td className="py-1.5 w-32 font-semibold text-gray-800">Nama</td><td className="text-gray-900">: {user.nama}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800">NIK</td><td className="text-gray-900">: {user.nik}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800">Jabatan</td><td className="text-gray-900">: {user.jabatan || '-'}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800">Lokasi / Project</td><td className="text-gray-900">: {user.lokasiKerja} / {user.project}</td></tr>
+                      <tr><td className="py-1.5 font-semibold text-gray-800">Periode Lembur</td><td className="text-gray-900">: {dFrom} <span className="mx-1">s/d</span> {dTo}</td></tr>
                     </tbody>
                   </table>
 
                   <table className="w-full border-collapse border border-gray-800 mb-16 text-sm">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="border border-gray-800 p-2.5 text-left">Tgl Lembur</th>
-                        <th className="border border-gray-800 p-2.5 text-center">Waktu Mulai</th>
-                        <th className="border border-gray-800 p-2.5 text-center">Waktu Berakhir</th>
-                        <th className="border border-gray-800 p-2.5 text-center">Status</th>
-                        <th className="border border-gray-800 p-2.5 text-center">Tgl Approved</th>
+                        <th className="border border-gray-800 p-2.5 text-left text-gray-900">Tgl Lembur</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Waktu Mulai</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Waktu Berakhir</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Status</th>
+                        <th className="border border-gray-800 p-2.5 text-center text-gray-900">Tgl Approved</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -915,32 +920,32 @@
                         const appDate = ot.approvedAt ? new Date(ot.approvedAt).toLocaleDateString('id-ID') : '-';
                         return (
                           <tr key={ot.id}>
-                            <td className="border border-gray-800 p-2.5 font-medium">{ot.tanggal}</td>
-                            <td className="border border-gray-800 p-2.5 text-center">{ot.jamMulai}</td>
-                            <td className="border border-gray-800 p-2.5 text-center">{ot.jamBerakhir}</td>
-                            <td className="border border-gray-800 p-2.5 text-center leading-tight">Approved by<br/><b>{ot.approvedBy || (approver ? approver.nama : '-')}</b></td>
-                            <td className="border border-gray-800 p-2.5 text-center">{appDate}</td>
+                            <td className="border border-gray-800 p-2.5 font-medium text-gray-900">{ot.tanggal}</td>
+                            <td className="border border-gray-800 p-2.5 text-center text-gray-800">{ot.jamMulai}</td>
+                            <td className="border border-gray-800 p-2.5 text-center text-gray-800">{ot.jamBerakhir}</td>
+                            <td className="border border-gray-800 p-2.5 text-center leading-tight text-gray-800">Approved by<br/><b>{ot.approvedBy || (approver ? approver.nama : '-')}</b></td>
+                            <td className="border border-gray-800 p-2.5 text-center text-gray-800">{appDate}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
 
-                  <div className="grid grid-cols-3 gap-4 mt-12 px-4 text-center text-sm">
+                  <div className="grid grid-cols-3 gap-4 mt-16 px-2 text-center text-sm">
                     <div>
-                      <p className="mb-24">Pemohon,</p>
-                      <p className="font-bold underline">{user.nama}</p>
-                      <p className="text-xs mt-1">NIK: {user.nik}</p>
+                      <p className="mb-24 text-gray-800">Pemohon,</p>
+                      <p className="font-bold underline text-gray-900">{user.nama}</p>
+                      <p className="text-xs mt-1 text-gray-600">NIK: {user.nik}</p>
                     </div>
                     <div>
-                      <p className="mb-24">Menyetujui,</p>
-                      <p className="font-bold underline">{approver ? approver.nama : '(.......................)'}</p>
-                      <p className="text-xs mt-1">Atasan Langsung</p>
+                      <p className="mb-24 text-gray-800">Menyetujui,</p>
+                      <p className="font-bold underline text-gray-900">{approver ? approver.nama : '(.......................)'}</p>
+                      <p className="text-xs mt-1 text-gray-600">Atasan Langsung</p>
                     </div>
                     <div>
-                      <p className="mb-24">Menyetujui,</p>
-                      <p className="font-bold underline">(.......................)</p>
-                      <p className="text-xs mt-1">HRD</p>
+                      <p className="mb-24 text-gray-800">Menyetujui,</p>
+                      <p className="font-bold underline text-gray-900">(.......................)</p>
+                      <p className="text-xs mt-1 text-gray-600">HRD Lokasi</p>
                     </div>
                   </div>
                 </div>
