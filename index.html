@@ -62,6 +62,12 @@
       return Number((diff / 60).toFixed(2));
     };
 
+    // PERBAIKAN: Menambahkan kembali konstanta BULAN_OPTIONS yang terhapus
+    const BULAN_OPTIONS = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
     function App() {
       const [currentUser, setCurrentUser] = useState(null);
       const [activeTab, setActiveTab] = useState(''); 
@@ -197,13 +203,31 @@
       };
 
       const handleSaveOvertime = async (newData) => {
-        // PERBAIKAN: Pastikan status 'Pending' masuk ke memori lokal agar langsung terbaca di Dashboard Atasan
         const processedData = newData.map(ot => ({ ...ot, status: 'Pending' }));
-        setSavedOvertimes([...processedData, ...savedOvertimes]); 
+        
+        // Memasukkan field bawaan (periode, file) untuk menghindari penolakan database
         const dbPayloads = processedData.map(ot => ({
-          id: ot.id, nik: ot.nik, tanggal: ot.tanggal, jam_mulai: ot.jamMulai, jam_berakhir: ot.jamBerakhir, status: ot.status, timestamp: ot.timestamp
+          id: String(ot.id), 
+          nik: ot.nik, 
+          tanggal: ot.tanggal, 
+          jam_mulai: ot.jamMulai, 
+          jam_berakhir: ot.jamBerakhir, 
+          status: ot.status, 
+          timestamp: ot.timestamp,
+          periode: ot.periode || 'Semua', 
+          file_name: ot.fileName || '-', 
+          file_url: ot.fileUrl || '-'
         }));
-        await supabase.from('overtimes').insert(dbPayloads);
+
+        const { error } = await supabase.from('overtimes').insert(dbPayloads);
+        
+        if (error) {
+          console.error("Gagal menyimpan ke database:", error);
+          throw new Error(error.message); // Melempar error agar ditangkap oleh UI form
+        }
+
+        // Tampilan baru diperbarui jika data benar-benar sukses masuk database
+        setSavedOvertimes(prev => [...processedData, ...prev]); 
       };
 
       const handleUpdateOvertime = async (id, updatedFields) => {
@@ -780,12 +804,39 @@
     // --- KOMPONEN KARYAWAN ---
     function InputLembur({ user, onSave }) {
       const [entries, setEntries] = useState([{ id: Date.now(), tanggal: '', jamMulai: '', jamBerakhir: '' }]);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!entries.every(e => e.tanggal && e.jamMulai && e.jamBerakhir)) return alert('Lengkapi data jam lembur.');
-        const dataToSave = entries.map(entry => ({ id: entry.id+Math.random().toString().substr(2,5), nik: user.nik, tanggal: entry.tanggal, jamMulai: entry.jamMulai, jamBerakhir: entry.jamBerakhir, timestamp: new Date().toISOString() }));
-        await onSave(dataToSave);
-        alert('Data pengajuan berhasil dikirim!'); setEntries([{ id: Date.now(), tanggal: '', jamMulai: '', jamBerakhir: '' }]);
+        
+        setIsSubmitting(true);
+        try {
+          const dataToSave = entries.map(entry => {
+            const dateObj = new Date(entry.tanggal);
+            const monthName = isNaN(dateObj.getMonth()) ? 'Unknown' : BULAN_OPTIONS[dateObj.getMonth()];
+            
+            return { 
+              id: `OT-${Date.now()}-${Math.floor(Math.random()*1000)}`, 
+              nik: user.nik, 
+              tanggal: entry.tanggal, 
+              jamMulai: entry.jamMulai, 
+              jamBerakhir: entry.jamBerakhir, 
+              periode: monthName, // Periode di-generate otomatis di background
+              fileName: '-',
+              fileUrl: '-',
+              timestamp: new Date().toISOString() 
+            };
+          });
+          
+          await onSave(dataToSave);
+          alert('Data pengajuan berhasil dikirim!'); 
+          setEntries([{ id: Date.now(), tanggal: '', jamMulai: '', jamBerakhir: '' }]);
+        } catch (error) {
+          alert('Terjadi kesalahan saat menyimpan ke database: ' + error.message);
+        } finally {
+          setIsSubmitting(false);
+        }
       };
 
       return (
@@ -813,7 +864,9 @@
               ))}
               <div className="flex justify-between mt-4 items-center">
                 <button type="button" onClick={()=>setEntries([...entries, {id:Date.now(), tanggal:'', jamMulai:'', jamBerakhir:''}])} className="text-blue-600 font-medium text-sm hover:underline"><Icon name="plus" className="mr-1"/> Tambah Baris</button>
-                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition">Kirim Pengajuan</button>
+                <button type="submit" disabled={isSubmitting} className={`px-6 py-2.5 rounded-lg font-bold shadow-sm transition ${isSubmitting ? 'bg-blue-400 text-white cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                  {isSubmitting ? 'Menyimpan...' : 'Kirim Pengajuan'}
+                </button>
               </div>
             </form>
           </div>
